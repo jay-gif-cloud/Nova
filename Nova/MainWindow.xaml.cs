@@ -1,639 +1,105 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
-namespace Nova
+namespace Nova;
+
+public partial class MainWindow : Window
 {
-    public partial class MainWindow : Window
+    private readonly DispatcherTimer _timer;
+    private readonly string _quarantineRoot;
+    private readonly string _logPath;
+    private int _cleanupRunning;
+    public ObservableCollection<DriveReport> DriveReports { get; } = new();
+    public ObservableCollection<StartupEntry> StartupEntries { get; } = new();
+    public ObservableCollection<LargeFileItem> LargeFiles { get; } = new();
+
+    public MainWindow()
     {
-        private readonly DispatcherTimer _timer;
-        private readonly string _quarantineRoot;
-        private readonly string _logPath;
-        private readonly List<PerformanceCounter> _cpuCounters = new();
-        private readonly List<PerformanceCounter> _networkCounters = new();
-        private bool _cleanupInProgress;
-
-        public ObservableCollection<DriveReport> DriveReports { get; } = new();
-        public ObservableCollection<StartupEntry> StartupEntries { get; } = new();
-        public ObservableCollection<LargeFileItem> LargeFiles { get; } = new();
-
-        public MainWindow()
-        {
-            InitializeComponent();
-            DataContext = this;
-
-            var appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nova");
-            Directory.CreateDirectory(appDataPath);
-            _quarantineRoot = Path.Combine(appDataPath, "Quarantine");
-            _logPath = Path.Combine(appDataPath, "nova_log.txt");
-            Directory.CreateDirectory(_quarantineRoot);
-
-            _timer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1)
-            };
-            _timer.Tick += Timer_Tick;
-
-            LoadStartupEntries();
-            LoadDriveReports();
-            LoadLargeFiles();
-            _timer.Start();
-            UpdateSystemMetrics();
-        }
-
-        private void Timer_Tick(object? sender, EventArgs e)
-        {
-            UpdateSystemMetrics();
-        }
-
-        private void RefreshButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_cleanupInProgress)
-            {
-                return;
-            }
-
-            LoadDriveReports();
-            LoadLargeFiles();
-            LoadStartupEntries();
-            UpdateSystemMetrics();
-        }
-
-        private void CleanupTempButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_cleanupInProgress)
-            {
-                return;
-            }
-
-            Task.Run(async () =>
-            {
-                var tempFiles = GetTempFiles();
-                if (tempFiles.Count == 0)
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        MessageBox.Show("No temporary files were found to clean.", "Nothing to Clean", MessageBoxButton.OK, MessageBoxImage.Information);
-                    });
-                    return;
-                }
-
-                await SafeCleanupAsync("temporary files", tempFiles, "Temporary");
-            });
-        }
-
-        private void CleanupRecycleButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_cleanupInProgress)
-            {
-                return;
-            }
-
-            var result = MessageBox.Show(
-                "This will empty the Recycle Bin for all drives. Files can be recovered from Windows Recycle Bin only if you restore them before final deletion. Continue?",
-                "Confirm Recycle Bin Cleanup",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result != MessageBoxResult.Yes)
-            {
-                return;
-            }
-
-            try
-            {
-                var error = NativeMethods.SHEmptyRecycleBin(IntPtr.Zero, null, 0);
-                if (error == 0)
-                {
-                    LogAction("Recycle Bin emptied successfully.");
-                    StatusText.Text = "Recycle Bin emptied";
-                    StatusText.Foreground = System.Windows.Media.Brushes.White;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Shell cleanup returned code {error}.");
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Unable to empty Recycle Bin: {ex.Message}", "Cleanup Failed", MessageBoxButton.OK, MessageBoxImage.Error);
-                LogAction($"Recycle Bin cleanup failed: {ex.Message}");
-            }
-        }
-
-        private void CleanupLargeButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_cleanupInProgress)
-            {
-                return;
-            }
-
-            if (LargeFiles.Count == 0)
-            {
-                MessageBox.Show("No large files were discovered yet.", "No Cleanup Items", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var summary = string.Join(Environment.NewLine, LargeFiles.Take(5).Select(f => $"- {f.Name} ({f.SizeLabel})"));
-            var result = MessageBox.Show($"Review the following large files before removal?\n\n{summary}", "Large File Review", MessageBoxButton.YesNo, MessageBoxImage.Information);
-            if (result == MessageBoxResult.Yes)
-            {
-                Task.Run(async () =>
-                {
-                    var files = LargeFiles.Select(f => new CleanupItem(f.Path, f.Name, f.Size)).ToList();
-                    await SafeCleanupAsync("large files", files, "Large");
-                });
-            }
-        }
-
-        private void OpenQuarantineFolder_Click(object sender, RoutedEventArgs e)
-        {
-            Directory.CreateDirectory(_quarantineRoot);
-            OpenFolder(_quarantineRoot);
-        }
-
-        private void OpenStartupFolder_Click(object sender, RoutedEventArgs e)
-        {
-            var startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-            if (string.IsNullOrWhiteSpace(startupFolder) || !Directory.Exists(startupFolder))
-            {
-                MessageBox.Show("The startup folder could not be found.", "Folder Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            OpenFolder(startupFolder);
-        }
-
-        private void OpenLogFolder_Click(object sender, RoutedEventArgs e)
-        {
-            var logFolder = Path.GetDirectoryName(_logPath);
-            if (string.IsNullOrWhiteSpace(logFolder))
-            {
-                MessageBox.Show("The log folder could not be resolved.", "Folder Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            Directory.CreateDirectory(logFolder);
-            OpenFolder(logFolder);
-        }
-
-        private static void OpenFolder(string folderPath)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "explorer.exe",
-                    Arguments = $"\"{folderPath}\"",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Unable to open folder: {ex.Message}", "Open Folder Failed", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void UpdateSystemMetrics()
-        {
-            var cpu = GetCpuUsage();
-            var memory = GetMemoryUsage();
-            var disk = GetOverallDiskUsage();
-            var network = GetNetworkUsageMbPerSecond();
-
-            CpuValue.Text = $"{cpu:F0}%";
-            MemoryValue.Text = $"{memory:F0}%";
-            DiskValue.Text = $"{disk:F0}%";
-            NetworkValue.Text = $"{network:F1} MB/s";
-
-            var isHealthy = cpu < 80 && memory < 80 && disk < 85;
-            StatusText.Text = isHealthy ? "System Healthy" : "Needs Attention";
-            StatusText.Foreground = isHealthy ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Orange;
-        }
-
-        private void LoadDriveReports()
-        {
-            DriveReports.Clear();
-            foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed))
-            {
-                var total = drive.TotalSize;
-                var free = drive.AvailableFreeSpace;
-                var used = total - free;
-                var percent = total > 0 ? (double)used / total * 100 : 0;
-                DriveReports.Add(new DriveReport(
-                    drive.Name,
-                    percent,
-                    used,
-                    free,
-                    total));
-            }
-            DriveList.ItemsSource = DriveReports;
-        }
-
-        private void LoadStartupEntries()
-        {
-            StartupEntries.Clear();
-            foreach (var entry in EnumerateStartupEntries())
-            {
-                StartupEntries.Add(entry);
-            }
-            StartupList.ItemsSource = StartupEntries;
-        }
-
-        private void LoadLargeFiles()
-        {
-            LargeFiles.Clear();
-            foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed))
-            {
-                var candidates = GetLargestFilesForDrive(drive.RootDirectory.FullName, maxItems: 18, maxDepth: 4, maxFilesScanned: 1500);
-                foreach (var item in candidates)
-                {
-                    LargeFiles.Add(item);
-                }
-            }
-
-            var ordered = LargeFiles.OrderByDescending(f => f.Size).Take(10).ToList();
-            LargeFiles.Clear();
-            foreach (var item in ordered)
-            {
-                LargeFiles.Add(item);
-            }
-            CleanupList.ItemsSource = LargeFiles;
-        }
-
-        private List<StartupEntry> EnumerateStartupEntries()
-        {
-            var entries = new List<StartupEntry>();
-
-            var runKeys = new[]
-            {
-                new { Root = RegistryHive.CurrentUser, Path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run" },
-                new { Root = RegistryHive.LocalMachine, Path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run" },
-                new { Root = RegistryHive.CurrentUser, Path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" },
-            };
-
-            foreach (var keyInfo in runKeys)
-            {
-                using var reg = RegistryKey.OpenBaseKey(keyInfo.Root, RegistryView.Default);
-                using var key = reg.OpenSubKey(keyInfo.Path, false);
-                if (key == null)
-                {
-                    continue;
-                }
-
-                foreach (var valueName in key.GetValueNames())
-                {
-                    var value = key.GetValue(valueName, "");
-                    if (value is string str && !string.IsNullOrWhiteSpace(str))
-                    {
-                        entries.Add(new StartupEntry(valueName, "Run Registry", str));
-                    }
-                }
-            }
-
-            var startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-            if (!string.IsNullOrWhiteSpace(startupFolder) && Directory.Exists(startupFolder))
-            {
-                foreach (var file in Directory.GetFiles(startupFolder, "*.*", SearchOption.TopDirectoryOnly))
-                {
-                    entries.Add(new StartupEntry(Path.GetFileName(file), "Startup Folder", file));
-                }
-            }
-
-            return entries.DistinctBy(e => e.Name + e.Source + e.Path).OrderBy(e => e.Name).ToList();
-        }
-
-        private List<CleanupItem> GetTempFiles()
-        {
-            var tempPath = Path.GetTempPath();
-            var appDataTemp = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp");
-            var roots = new[] { tempPath, appDataTemp };
-            var files = new List<CleanupItem>();
-
-            foreach (var root in roots.Where(Directory.Exists))
-            {
-                foreach (var file in Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        var info = new FileInfo(file);
-                        files.Add(new CleanupItem(file, info.Name, info.Length));
-                    }
-                    catch
-                    {
-                        // ignore inaccessible files
-                    }
-                }
-            }
-
-            return files
-                .OrderByDescending(f => f.Size)
-                .Take(20)
-                .ToList();
-        }
-
-        private List<LargeFileItem> GetLargestFilesForDrive(string rootPath, int maxItems, int maxDepth, int maxFilesScanned)
-        {
-            var results = new List<LargeFileItem>();
-            var queue = new Queue<(string Path, int Depth)>();
-            queue.Enqueue((rootPath, 0));
-            var scanned = 0;
-
-            while (queue.Count > 0 && scanned < maxFilesScanned)
-            {
-                var item = queue.Dequeue();
-                if (item.Depth > maxDepth)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    foreach (var dir in Directory.EnumerateDirectories(item.Path))
-                    {
-                        try
-                        {
-                            queue.Enqueue((dir, item.Depth + 1));
-                        }
-                        catch
-                        {
-                            // ignore inaccessible directories
-                        }
-                    }
-
-                    foreach (var file in Directory.EnumerateFiles(item.Path))
-                    {
-                        scanned++;
-                        try
-                        {
-                            var info = new FileInfo(file);
-                            results.Add(new LargeFileItem(file, info.Name, info.Length, info.DirectoryName ?? string.Empty));
-                        }
-                        catch
-                        {
-                            // ignore inaccessible files
-                        }
-                    }
-                }
-                catch
-                {
-                    // ignore inaccessible paths
-                }
-            }
-
-            return results.OrderByDescending(r => r.Size).Take(maxItems).ToList();
-        }
-
-        private async Task SafeCleanupAsync(string description, List<CleanupItem> candidates, string cleanupType)
-        {
-            if (_cleanupInProgress)
-            {
-                return;
-            }
-
-            _cleanupInProgress = true;
-
-            try
-            {
-                if (candidates.Count == 0)
-                {
-                    await Dispatcher.InvokeAsync(() =>
-                    {
-                        MessageBox.Show($"No {description} were found to clean.", "Nothing to Clean", MessageBoxButton.OK, MessageBoxImage.Information);
-                    });
-                    return;
-                }
-
-                var totalSize = candidates.Sum(c => c.Size);
-                var summary = string.Join(Environment.NewLine, candidates.Take(5).Select(c => $"- {c.Name} ({FormatBytes(c.Size)})"));
-
-                var result = await Dispatcher.InvokeAsync(() => MessageBox.Show(
-                    $"This action will move {candidates.Count} {description} to a safe quarantine folder before removal.\n\nEstimated size: {FormatBytes(totalSize)}\n\nPreview:\n{summary}\n\nContinue?",
-                    $"Confirm {cleanupType} Cleanup",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning));
-
-                if (result != MessageBoxResult.Yes)
-                {
-                    return;
-                }
-
-                var quarantineFolder = Path.Combine(_quarantineRoot, cleanupType + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
-                Directory.CreateDirectory(quarantineFolder);
-
-                var moved = 0;
-                foreach (var item in candidates)
-                {
-                    try
-                    {
-                        var target = Path.Combine(quarantineFolder, MakeSafeFileName(item.Name + "_" + Guid.NewGuid().ToString("N")));
-                        if (File.Exists(item.Path))
-                        {
-                            File.Move(item.Path, target);
-                        }
-                        else if (Directory.Exists(item.Path))
-                        {
-                            Directory.Move(item.Path, target);
-                        }
-                        moved++;
-                    }
-                    catch (Exception ex)
-                    {
-                        LogAction($"Failed to quarantine {item.Path}: {ex.Message}");
-                    }
-                }
-
-                LogAction($"Moved {moved} {description} to quarantine folder: {quarantineFolder}.");
-
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"{moved} items were safely quarantined. You can restore them from the Nova quarantine directory if needed.", "Cleanup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-                    LoadLargeFiles();
-                    LoadDriveReports();
-                });
-            }
-            finally
-            {
-                _cleanupInProgress = false;
-            }
-        }
-
-        private void LogAction(string message)
-        {
-            try
-            {
-                File.AppendAllText(_logPath, $"[{DateTime.Now:O}] {message}{Environment.NewLine}");
-            }
-            catch
-            {
-                // ignore logging errors
-            }
-        }
-
-        private static string MakeSafeFileName(string value)
-        {
-            foreach (var invalidChar in Path.GetInvalidFileNameChars())
-            {
-                value = value.Replace(invalidChar, '_');
-            }
-
-            return value.Trim();
-        }
-
-        private static string FormatBytes(long bytes)
-        {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            double len = bytes;
-            int order = 0;
-            while (len >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                len = len / 1024;
-            }
-
-            return string.Format(CultureInfo.InvariantCulture, "{0:0.##} {1}", len, sizes[order]);
-        }
-
-        private static double GetCpuUsage()
-        {
-            try
-            {
-                using var cpuCounter = new PerformanceCounter("Processor Information", "% Processor Utility", "_Total");
-                return cpuCounter.NextValue();
-            }
-            catch
-            {
-                return 0;
-            }
-        }
-
-        private static double GetMemoryUsage()
-        {
-            try
-            {
-                using var memCounter = new PerformanceCounter("Memory", "% Committed Bytes In Use");
-                return memCounter.NextValue();
-            }
-            catch
-            {
-                return 0;
-            }
-        }
-
-        private static double GetOverallDiskUsage()
-        {
-            try
-            {
-                var drives = DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed).ToList();
-                if (drives.Count == 0)
-                {
-                    return 0;
-                }
-
-                var total = drives.Sum(d => d.TotalSize);
-                var free = drives.Sum(d => d.AvailableFreeSpace);
-                var used = total - free;
-                return total > 0 ? (used / (double)total) * 100 : 0;
-            }
-            catch
-            {
-                return 0;
-            }
-        }
-
-        private static double GetNetworkUsageMbPerSecond()
-        {
-            try
-            {
-                var category = new PerformanceCounterCategory("Network Interface");
-                var instance = category.GetInstanceNames().FirstOrDefault();
-                if (instance == null)
-                {
-                    return 0;
-                }
-
-                using var counter = new PerformanceCounter("Network Interface", "Bytes Total/sec", instance);
-                var value = counter.NextValue();
-                return value / (1024.0 * 1024.0);
-            }
-            catch
-            {
-                return 0;
-            }
-        }
-
-        private static class NativeMethods
-        {
-            [DllImport("Shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-            public static extern int SHEmptyRecycleBin(IntPtr hwnd, string? pszRootPath, uint dwFlags);
-        }
+        InitializeComponent();
+        DataContext = this;
+        var appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nova");
+        Directory.CreateDirectory(appData);
+        _quarantineRoot = Path.Combine(appData, "Quarantine");
+        _logPath = Path.Combine(appData, "nova_log.txt");
+        Directory.CreateDirectory(_quarantineRoot);
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _timer.Tick += (_, _) => UpdateSystemMetrics();
+        LoadStartupEntries(); LoadDriveReports(); LoadLargeFiles(); UpdateSystemMetrics(); _timer.Start();
     }
 
-    public record DriveReport(string Name, double UsedPercent, long UsedBytes, long FreeBytes, long TotalBytes)
+    private void RefreshButton_Click(object sender, RoutedEventArgs e) { LoadStartupEntries(); LoadDriveReports(); LoadLargeFiles(); UpdateSystemMetrics(); }
+    private void CleanupTempButton_Click(object sender, RoutedEventArgs e) => BeginCleanup("temporary files", "Temporary", GetTempFiles());
+    private void CleanupLargeButton_Click(object sender, RoutedEventArgs e) => BeginCleanup("large files", "Large", LargeFiles.Select(x => new CleanupItem(x.Path, x.Name, x.Size)).ToList());
+
+    private void CleanupRecycleButton_Click(object sender, RoutedEventArgs e)
     {
-        public string UsedPercentLabel => $"{UsedPercent:F0}%";
-        public string FreeSpaceLabel => FormatBytes(FreeBytes);
-        public string TotalSpaceLabel => FormatBytes(TotalBytes);
-
-        private static string FormatBytes(long bytes)
-        {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            double len = bytes;
-            int order = 0;
-            while (len >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                len = len / 1024;
-            }
-
-            return string.Format(CultureInfo.InvariantCulture, "{0:0.##} {1}", len, sizes[order]);
-        }
+        if (MessageBox.Show("Empty the Windows Recycle Bin? This cannot be undone.", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try { var result = NativeMethods.SHEmptyRecycleBin(IntPtr.Zero, null, 0); if (result != 0) throw new InvalidOperationException($"Windows returned code {result}."); StatusText.Text = "Recycle Bin emptied"; Log("Recycle Bin emptied."); }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "Recycle Bin Cleanup Failed", MessageBoxButton.OK, MessageBoxImage.Error); Log(ex.ToString()); }
     }
 
-    public record StartupEntry(string Name, string Source, string Path);
-
-    public record CleanupItem(string Path, string Name, long Size)
+    private void BeginCleanup(string description, string kind, List<CleanupItem> candidates)
     {
-        public string SizeLabel => FormatBytes(Size);
-
-        private static string FormatBytes(long bytes)
-        {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            double len = bytes;
-            int order = 0;
-            while (len >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                len = len / 1024;
-            }
-
-            return string.Format(CultureInfo.InvariantCulture, "{0:0.##} {1}", len, sizes[order]);
-        }
+        if (Interlocked.Exchange(ref _cleanupRunning, 1) != 0) return;
+        Task.Run(() => CleanupWorker(description, kind, candidates));
     }
 
-    public record LargeFileItem(string Path, string Name, long Size, string DirectoryName)
+    private void CleanupWorker(string description, string kind, List<CleanupItem> candidates)
     {
-        public string SizeLabel => FormatBytes(Size);
-
-        private static string FormatBytes(long bytes)
+        try
         {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            double len = bytes;
-            int order = 0;
-            while (len >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                len = len / 1024;
-            }
-
-            return string.Format(CultureInfo.InvariantCulture, "{0:0.##} {1}", len, sizes[order]);
+            if (candidates.Count == 0) { Dispatcher.Invoke(() => MessageBox.Show($"No {description} were found.", "Nothing to Clean")); return; }
+            var preview = string.Join(Environment.NewLine, candidates.Take(5).Select(x => $"- {x.Name} ({Bytes(x.Size)})"));
+            var answer = Dispatcher.Invoke(() => MessageBox.Show($"Move {candidates.Count} {description} to Nova quarantine?\n\n{preview}\n\nFiles remain recoverable there.", "Confirm Cleanup", MessageBoxButton.YesNo, MessageBoxImage.Warning));
+            if (answer != MessageBoxResult.Yes) return;
+            var folder = Path.Combine(_quarantineRoot, $"{kind}_{DateTime.Now:yyyyMMdd_HHmmss}"); Directory.CreateDirectory(folder);
+            var moved = 0;
+            foreach (var item in candidates) try { if (File.Exists(item.Path)) { File.Move(item.Path, Path.Combine(folder, SafeName(item.Name + "_" + Guid.NewGuid().ToString("N")))); moved++; } } catch (Exception ex) { Log($"Skipped {item.Path}: {ex.Message}"); }
+            Log($"Quarantined {moved} {description}.");
+            Dispatcher.Invoke(() => { MessageBox.Show($"{moved} item(s) moved to quarantine.", "Cleanup Complete"); LoadDriveReports(); LoadLargeFiles(); });
         }
+        finally { Interlocked.Exchange(ref _cleanupRunning, 0); }
     }
+
+    private void OpenQuarantineFolder_Click(object sender, RoutedEventArgs e) { OpenFolder(_quarantineRoot); }
+    private void OpenLogFolder_Click(object sender, RoutedEventArgs e) { OpenFolder(Path.GetDirectoryName(_logPath)!); }
+    private static void OpenFolder(string path) { Directory.CreateDirectory(path); Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true }); }
+
+    // These actions delegate to Microsoft's signed Windows tools. Nova does not download or install unverified drivers.
+    private void WindowsUpdate_Click(object sender, RoutedEventArgs e) => OpenUri("ms-settings:windowsupdate");
+    private void OptionalUpdates_Click(object sender, RoutedEventArgs e) => OpenUri("ms-settings:windowsupdate-optionalupdates");
+    private void DeviceManager_Click(object sender, RoutedEventArgs e) => StartTool("devmgmt.msc");
+    private void SystemInformation_Click(object sender, RoutedEventArgs e) => StartTool("msinfo32.exe");
+    private static void OpenUri(string uri) { try { Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message, "Windows Tool Failed", MessageBoxButton.OK, MessageBoxImage.Error); } }
+    private static void StartTool(string file) { try { Process.Start(new ProcessStartInfo(file) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message, "Windows Tool Failed", MessageBoxButton.OK, MessageBoxImage.Error); } }
+
+    private void UpdateSystemMetrics()
+    {
+        var cpu = Counter("Processor Information", "% Processor Utility", "_Total"); var memory = Counter("Memory", "% Committed Bytes In Use"); var disk = GetDisk();
+        CpuValue.Text = $"{cpu:F0}%"; MemoryValue.Text = $"{memory:F0}%"; DiskValue.Text = $"{disk:F0}%"; NetworkValue.Text = "0 MB/s";
+        StatusText.Text = cpu < 80 && memory < 80 && disk < 85 ? "System Healthy" : "Needs Attention";
+    }
+    private static double Counter(string category, string name, string instance) { try { using var c = new PerformanceCounter(category, name, instance); return c.NextValue(); } catch { return 0; } }
+    private static double GetDisk() { try { var d = DriveInfo.GetDrives().Where(x => x.IsReady && x.DriveType == DriveType.Fixed).ToList(); var total = d.Sum(x => x.TotalSize); return total == 0 ? 0 : (total - d.Sum(x => x.AvailableFreeSpace)) * 100d / total; } catch { return 0; } }
+
+    private void LoadDriveReports() { DriveReports.Clear(); foreach (var d in DriveInfo.GetDrives().Where(x => x.IsReady && x.DriveType == DriveType.Fixed)) { var used = d.TotalSize - d.AvailableFreeSpace; DriveReports.Add(new DriveReport(d.Name, d.TotalSize == 0 ? 0 : used * 100d / d.TotalSize, d.AvailableFreeSpace, d.TotalSize)); } DriveList.ItemsSource = DriveReports; }
+    private void LoadStartupEntries() { StartupEntries.Clear(); foreach (var x in RegistryEntries()) StartupEntries.Add(x); StartupList.ItemsSource = StartupEntries; }
+    private static IEnumerable<StartupEntry> RegistryEntries() { foreach (var spec in new[] { (RegistryHive.CurrentUser, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"), (RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run") }) { try { using var b = RegistryKey.OpenBaseKey(spec.Item1, RegistryView.Default); using var k = b.OpenSubKey(spec.Item2); if (k != null) foreach (var n in k.GetValueNames()) yield return new StartupEntry(n, "Run Registry", k.GetValue(n)?.ToString() ?? ""); } catch { } } }
+    private void LoadLargeFiles() { LargeFiles.Clear(); foreach (var d in DriveInfo.GetDrives().Where(x => x.IsReady && x.DriveType == DriveType.Fixed)) { try { foreach (var f in Directory.EnumerateFiles(d.RootDirectory.FullName, "*", SearchOption.TopDirectoryOnly).Select(x => new FileInfo(x)).OrderByDescending(x => x.Length).Take(10)) LargeFiles.Add(new LargeFileItem(f.FullName, f.Name, f.Length, f.DirectoryName ?? "")); } catch { } } CleanupList.ItemsSource = LargeFiles.OrderByDescending(x => x.Size).Take(10).ToList(); }
+    private static List<CleanupItem> GetTempFiles() { var result = new List<CleanupItem>(); foreach (var root in new[] { Path.GetTempPath(), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp") }.Distinct().Where(Directory.Exists)) try { foreach (var f in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Take(5000)) try { var i = new FileInfo(f); result.Add(new CleanupItem(f, i.Name, i.Length)); } catch { } } catch { } return result.OrderByDescending(x => x.Size).Take(20).ToList(); }
+    private void Log(string text) { try { File.AppendAllText(_logPath, $"[{DateTime.Now:O}] {text}{Environment.NewLine}"); } catch { } }
+    private static string SafeName(string text) { foreach (var c in Path.GetInvalidFileNameChars()) text = text.Replace(c, '_'); return text; }
+    private static string Bytes(long n) { string[] u = { "B", "KB", "MB", "GB", "TB" }; var i = 0; double x = n; while (x >= 1024 && i < u.Length - 1) { x /= 1024; i++; } return $"{x:0.##} {u[i]}"; }
+    private static class NativeMethods { [DllImport("Shell32.dll", CharSet = CharSet.Unicode)] public static extern int SHEmptyRecycleBin(IntPtr hwnd, string? root, uint flags); }
 }
+
+public record DriveReport(string Name, double UsedPercent, long FreeBytes, long TotalBytes) { public string UsedPercentLabel => $"{UsedPercent:F0}%"; public string FreeSpaceLabel => Format(FreeBytes); public string TotalSpaceLabel => Format(TotalBytes); private static string Format(long n) => $"{n / 1073741824d:0.##} GB"; }
+public record StartupEntry(string Name, string Source, string Path);
+public record CleanupItem(string Path, string Name, long Size);
+public record LargeFileItem(string Path, string Name, long Size, string DirectoryName) { public string SizeLabel => $"{Size / 1048576d:0.##} MB"; }
