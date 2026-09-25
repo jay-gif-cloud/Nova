@@ -153,6 +153,54 @@ namespace Nova
             }
         }
 
+        private void OpenQuarantineFolder_Click(object sender, RoutedEventArgs e)
+        {
+            Directory.CreateDirectory(_quarantineRoot);
+            OpenFolder(_quarantineRoot);
+        }
+
+        private void OpenStartupFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            if (string.IsNullOrWhiteSpace(startupFolder) || !Directory.Exists(startupFolder))
+            {
+                MessageBox.Show("The startup folder could not be found.", "Folder Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            OpenFolder(startupFolder);
+        }
+
+        private void OpenLogFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var logFolder = Path.GetDirectoryName(_logPath);
+            if (string.IsNullOrWhiteSpace(logFolder))
+            {
+                MessageBox.Show("The log folder could not be resolved.", "Folder Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            Directory.CreateDirectory(logFolder);
+            OpenFolder(logFolder);
+        }
+
+        private static void OpenFolder(string folderPath)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"\"{folderPath}\"",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Unable to open folder: {ex.Message}", "Open Folder Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void UpdateSystemMetrics()
         {
             var cpu = GetCpuUsage();
