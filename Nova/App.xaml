@@ -1,0 +1,18 @@
+<Application x:Class="Nova.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <SolidColorBrush x:Key="BackgroundBrush" Color="#070B1A" />
+            <SolidColorBrush x:Key="PanelBrush" Color="#111A2F" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#5ED4FF" />
+            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#9B66FF" />
+            <SolidColorBrush x:Key="SoftTextBrush" Color="#C9D4FF" />
+            <SolidColorBrush x:Key="MutedTextBrush" Color="#8FA2D6" />
+            <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="White" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
