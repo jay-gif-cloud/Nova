@@ -7,7 +7,6 @@
     <Window.Resources>
         <SolidColorBrush x:Key="PanelFill" Color="#B9141B32" />
         <SolidColorBrush x:Key="PanelStroke" Color="#445B86" />
-        <SolidColorBrush x:Key="MutedText" Color="#93A6C9" />
         <Style x:Key="GlassPanel" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource PanelFill}" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelStroke}" />
@@ -23,7 +22,10 @@
             <Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border></ControlTemplate></Setter.Value></Setter>
         </Style>
-        <Style TargetType="GridViewColumnHeader"><Setter Property="Background" Value="#F5F7FC" /><Setter Property="Foreground" Value="#101827" /><Setter Property="FontWeight" Value="Bold" /><Setter Property="Padding" Value="10,7" /></Style>
+        <Style TargetType="GridViewColumnHeader">
+            <Setter Property="Background" Value="#F5F7FC" /><Setter Property="Foreground" Value="#101827" />
+            <Setter Property="FontWeight" Value="Bold" /><Setter Property="Padding" Value="10,7" />
+        </Style>
         <Style TargetType="ListViewItem"><Setter Property="Foreground" Value="#EDF3FF" /><Setter Property="Padding" Value="8,5" /><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style>
     </Window.Resources>
     <Grid>
@@ -33,7 +35,7 @@
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
             <Border Grid.Row="0" Style="{StaticResource GlassPanel}" Padding="22,16" Margin="0,0,0,20">
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel><TextBlock Text="NOVA" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" /><TextBlock Text="SYSTEM CONTROL CENTER" FontSize="10" FontWeight="SemiBold" Foreground="#6AD9FF" LetterSpacing="2" /></StackPanel>
+                    <StackPanel><TextBlock Text="NOVA" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" /><TextBlock Text="SYSTEM CONTROL CENTER" FontSize="10" FontWeight="SemiBold" Foreground="#6AD9FF" /></StackPanel>
                     <TextBlock Grid.Column="1" Text="Live performance, storage and startup insights" FontSize="14" Foreground="#A9B8D7" VerticalAlignment="Center" Margin="24,0,0,0" />
                     <Border Grid.Column="2" Padding="14,9" CornerRadius="999" Background="#163A36" BorderBrush="#57E6AC" BorderThickness="1"><TextBlock x:Name="StatusText" Text="System Healthy" Foreground="#72F2B5" FontWeight="SemiBold" /></Border>
                 </Grid>
