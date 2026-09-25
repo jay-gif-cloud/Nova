@@ -10,7 +10,7 @@
             <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#9B66FF" />
             <SolidColorBrush x:Key="SoftTextBrush" Color="#C9D4FF" />
             <SolidColorBrush x:Key="MutedTextBrush" Color="#8FA2D6" />
-            <Style TargetType="TextBlock">
+            <Style TargetType="{x:Type TextBlock}">
                 <Setter Property="Foreground" Value="White" />
             </Style>
         </ResourceDictionary>

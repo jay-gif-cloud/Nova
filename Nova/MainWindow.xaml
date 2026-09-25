@@ -5,77 +5,96 @@
         WindowStartupLocation="CenterScreen" Background="#050914" Foreground="White">
     <Window.Resources>
         <Style x:Key="Panel" TargetType="Border">
-            <Setter Property="Background" Value="#D9111A31"/>
-            <Setter Property="BorderBrush" Value="#405982"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="18"/>
-            <Setter Property="Padding" Value="18"/>
-            <Setter Property="Margin" Value="0,0,0,14"/>
+            <Setter Property="Background" Value="#0D1728" />
+            <Setter Property="BorderBrush" Value="#405982" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Margin" Value="0,0,0,14" />
         </Style>
+
         <Style x:Key="Action" TargetType="Button">
-            <Setter Property="Background" Value="#0B1833"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#4CC8FF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="12,9"/>
-            <Setter Property="Margin" Value="0,0,10,10"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="#0B1833" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#4CC8FF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Margin" Value="0,0,10,10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
+
         <Style TargetType="GridViewColumnHeader">
-            <Setter Property="Background" Value="#F5F7FC"/>
-            <Setter Property="Foreground" Value="#101827"/>
-            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Background" Value="#F5F7FC" />
+            <Setter Property="Foreground" Value="#101827" />
+            <Setter Property="FontWeight" Value="Bold" />
         </Style>
+
         <Style TargetType="ListViewItem">
-            <Setter Property="Foreground" Value="#EDF3FF"/>
-            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="Foreground" Value="#EDF3FF" />
+            <Setter Property="Padding" Value="7,4" />
         </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#010812"/>
-                <GradientStop Color="#071C34" Offset="0.25"/>
-                <GradientStop Color="#171044" Offset="0.62"/>
-                <GradientStop Color="#050914" Offset="1"/>
+                <GradientStop Color="#010812" Offset="0" />
+                <GradientStop Color="#071C34" Offset="0.25" />
+                <GradientStop Color="#171044" Offset="0.62" />
+                <GradientStop Color="#050914" Offset="1" />
             </LinearGradientBrush>
         </Grid.Background>
 
         <Canvas IsHitTestVisible="False" Opacity="0.9">
-            <Ellipse Width="1050" Height="600" Canvas.Left="80" Canvas.Top="120" Fill="#18D7FF" Opacity="0.17"/>
-            <Ellipse Width="900" Height="600" Canvas.Left="480" Canvas.Top="170" Fill="#4B45FF" Opacity="0.16"/>
-            <Ellipse Width="800" Height="500" Canvas.Left="260" Canvas.Top="350" Fill="#E04DDA" Opacity="0.10"/>
-            <Ellipse Width="500" Height="300" Canvas.Left="40" Canvas.Top="500" Fill="#27DFFF" Opacity="0.12"/>
-            <Ellipse Width="10" Height="10" Canvas.Left="180" Canvas.Top="110" Fill="White"/>
-            <Ellipse Width="8" Height="8" Canvas.Left="440" Canvas.Top="180" Fill="#DFFBFF"/>
-            <Ellipse Width="12" Height="12" Canvas.Left="1180" Canvas.Top="150" Fill="White"/>
-            <Ellipse Width="8" Height="8" Canvas.Left="980" Canvas.Top="680" Fill="White"/>
-            <Ellipse Width="11" Height="11" Canvas.Left="220" Canvas.Top="700" Fill="#DFFBFF"/>
-            <Ellipse Width="7" Height="7" Canvas.Left="760" Canvas.Top="100" Fill="White"/>
-            <Ellipse Width="8" Height="8" Canvas.Left="1320" Canvas.Top="560" Fill="#E8F7FF"/>
+            <Ellipse Width="1050" Height="600" Canvas.Left="80" Canvas.Top="120" Fill="#18D7FF" Opacity="0.17" />
+            <Ellipse Width="900" Height="600" Canvas.Left="480" Canvas.Top="170" Fill="#4B45FF" Opacity="0.16" />
+            <Ellipse Width="800" Height="500" Canvas.Left="260" Canvas.Top="350" Fill="#E04DDA" Opacity="0.10" />
+            <Ellipse Width="500" Height="300" Canvas.Left="40" Canvas.Top="500" Fill="#27DFFF" Opacity="0.12" />
+            <Ellipse Width="10" Height="10" Canvas.Left="180" Canvas.Top="110" Fill="White" />
+            <Ellipse Width="8" Height="8" Canvas.Left="440" Canvas.Top="180" Fill="#DFFBFF" />
+            <Ellipse Width="12" Height="12" Canvas.Left="1180" Canvas.Top="150" Fill="White" />
+            <Ellipse Width="8" Height="8" Canvas.Left="980" Canvas.Top="680" Fill="White" />
+            <Ellipse Width="11" Height="11" Canvas.Left="220" Canvas.Top="700" Fill="#DFFBFF" />
+            <Ellipse Width="7" Height="7" Canvas.Left="760" Canvas.Top="100" Fill="White" />
+            <Ellipse Width="8" Height="8" Canvas.Left="1320" Canvas.Top="560" Fill="#E8F7FF" />
         </Canvas>
 
         <Grid Margin="28">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0" Background="#E90D1428" BorderBrush="#31466F" BorderThickness="1" CornerRadius="16" Padding="18,12" Margin="0,0,0,18">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+
                     <StackPanel>
-                        <TextBlock Text="NOVA" FontSize="27" FontWeight="Bold"/>
-                        <TextBlock Text="SYSTEM CONTROL CENTER" FontSize="10" Foreground="#69D9FF"/>
+                        <TextBlock Text="NOVA" FontSize="27" FontWeight="Bold" />
+                        <TextBlock Text="SYSTEM CONTROL CENTER" FontSize="10" Foreground="#69D9FF" />
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="Performance, storage and Windows maintenance" Foreground="#93A8DD" VerticalAlignment="Center" Margin="20,0,0,0"/>
+
+                    <TextBlock Grid.Column="1" Text="Performance, storage and Windows maintenance" Foreground="#93A8DD" VerticalAlignment="Center" Margin="20,0,0,0" />
+
                     <Border Grid.Column="2" Background="#10283A" BorderBrush="#57E6AC" BorderThickness="1" CornerRadius="999" Padding="12,7">
-                        <TextBlock x:Name="StatusText" Text="System Healthy" Foreground="#8BFFBA" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="StatusText" Text="System Healthy" Foreground="#8BFFBA" FontWeight="SemiBold" />
                     </Border>
                 </Grid>
             </Border>
@@ -83,40 +102,45 @@
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.2*"/>
-                        <ColumnDefinition Width="1.8*"/>
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="1.8*" />
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,18,0">
                         <Border Style="{StaticResource Panel}">
                             <StackPanel>
-                                <TextBlock Text="System Overview" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF"/>
+                                <TextBlock Text="System Overview" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF" />
                                 <Grid Margin="0,14,0,0">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="CPU" Foreground="#8FA2D6"/>
-                                        <TextBlock x:Name="CpuValue" Text="0%" FontSize="30" FontWeight="Bold"/>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="CPU" Foreground="#8FA2D6" />
+                                        <TextBlock x:Name="CpuValue" Text="0%" FontSize="30" FontWeight="Bold" Margin="0,6,0,0" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Memory" Foreground="#8FA2D6"/>
-                                        <TextBlock x:Name="MemoryValue" Text="0%" FontSize="30" FontWeight="Bold"/>
+
+                                    <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                                        <TextBlock Text="Memory" Foreground="#8FA2D6" />
+                                        <TextBlock x:Name="MemoryValue" Text="0%" FontSize="30" FontWeight="Bold" Margin="0,6,0,0" />
                                     </StackPanel>
                                 </Grid>
-                                <Grid Margin="0,16,0,0">
+
+                                <Grid Margin="0,18,0,0">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="Disk" Foreground="#8FA2D6"/>
-                                        <TextBlock x:Name="DiskValue" Text="0%" FontSize="30" FontWeight="Bold"/>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Disk" Foreground="#8FA2D6" />
+                                        <TextBlock x:Name="DiskValue" Text="0%" FontSize="30" FontWeight="Bold" Margin="0,6,0,0" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Network" Foreground="#8FA2D6"/>
-                                        <TextBlock x:Name="NetworkValue" Text="0 MB/s" FontSize="24" FontWeight="Bold"/>
+
+                                    <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                                        <TextBlock Text="Network" Foreground="#8FA2D6" />
+                                        <TextBlock x:Name="NetworkValue" Text="0 MB/s" FontSize="24" FontWeight="Bold" Margin="0,6,0,0" />
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -124,53 +148,28 @@
 
                         <Border Style="{StaticResource Panel}">
                             <StackPanel>
-                                <TextBlock Text="Storage Cleanup" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF"/>
+                                <TextBlock Text="Storage Cleanup" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF" />
                                 <WrapPanel Margin="0,14,0,0">
-                                    <Button x:Name="CleanupTempButton" Style="{StaticResource Action}" Content="Clean Temp Files" Click="CleanupTempButton_Click"/>
-                                    <Button x:Name="CleanupRecycleButton" Style="{StaticResource Action}" Content="Empty Recycle Bin" Click="CleanupRecycleButton_Click"/>
-                                    <Button x:Name="CleanupLargeButton" Style="{StaticResource Action}" Content="Review Large Files" Click="CleanupLargeButton_Click"/>
-                                    <Button x:Name="OpenQuarantineButton" Style="{StaticResource Action}" Content="Open Quarantine" Click="OpenQuarantineFolder_Click"/>
-                                    <Button x:Name="RestoreQuarantineButton" Style="{StaticResource Action}" Content="Restore Quarantine" Click="RestoreFromQuarantine_Click"/>
-                                    <Button x:Name="OpenLogButton" Style="{StaticResource Action}" Content="Open Logs" Click="OpenLogFolder_Click"/>
-                                    <Button x:Name="RefreshButton" Style="{StaticResource Action}" Content="Refresh" Click="RefreshButton_Click"/>
+                                    <Button x:Name="CleanupTempButton" Style="{StaticResource Action}" Content="Clean Temp Files" Click="CleanupTempButton_Click" />
+                                    <Button x:Name="CleanupRecycleButton" Style="{StaticResource Action}" Content="Empty Recycle Bin" Click="CleanupRecycleButton_Click" />
+                                    <Button x:Name="CleanupLargeButton" Style="{StaticResource Action}" Content="Review Large Files" Click="CleanupLargeButton_Click" />
+                                    <Button x:Name="OpenQuarantineButton" Style="{StaticResource Action}" Content="Open Quarantine" Click="OpenQuarantineFolder_Click" />
+                                    <Button x:Name="OpenLogButton" Style="{StaticResource Action}" Content="Open Logs" Click="OpenLogFolder_Click" />
+                                    <Button x:Name="RefreshButton" Style="{StaticResource Action}" Content="Refresh" Click="RefreshButton_Click" />
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource Panel}">
                             <StackPanel>
-                                <TextBlock Text="Windows Tools" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF"/>
-                                <TextBlock Text="Official Windows tools only — Nova never downloads unverified drivers." TextWrapping="Wrap" Foreground="#9FB7EF" Margin="0,7,0,12"/>
+                                <TextBlock Text="Windows Tools" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF" />
+                                <TextBlock Text="Official Windows tools only — Nova never downloads unverified drivers." TextWrapping="Wrap" Foreground="#9FB7EF" Margin="0,7,0,12" />
                                 <WrapPanel>
-                                    <Button Style="{StaticResource Action}" Content="Check Windows Updates" Click="WindowsUpdate_Click"/>
-                                    <Button Style="{StaticResource Action}" Content="Optional Driver Updates" Click="OptionalUpdates_Click"/>
-                                    <Button Style="{StaticResource Action}" Content="Device Manager" Click="DeviceManager_Click"/>
-                                    <Button Style="{StaticResource Action}" Content="System Information" Click="SystemInformation_Click"/>
+                                    <Button Style="{StaticResource Action}" Content="Check Windows Updates" Click="WindowsUpdate_Click" />
+                                    <Button Style="{StaticResource Action}" Content="Optional Driver Updates" Click="OptionalUpdates_Click" />
+                                    <Button Style="{StaticResource Action}" Content="Device Manager" Click="DeviceManager_Click" />
+                                    <Button Style="{StaticResource Action}" Content="System Information" Click="SystemInformation_Click" />
                                 </WrapPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource Panel}">
-                            <StackPanel>
-                                <TextBlock Text="Startup Applications" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF"/>
-                                <WrapPanel Margin="0,6,0,10">
-                                    <Button Style="{StaticResource Action}" Content="Disable Selected" Click="DisableSelectedStartup_Click"/>
-                                    <Button Style="{StaticResource Action}" Content="Open Startup Folder" Click="OpenStartupFolder_Click"/>
-                                </WrapPanel>
-                                <ListBox x:Name="StartupList" Height="170" Margin="0,8,0,0" Background="#0B1220" BorderBrush="#2F3C60">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Name}"/>
-                                                <TextBlock Grid.Column="1" Text="{Binding Source}" Foreground="#9FB7EF" Margin="12,0,0,0"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -178,14 +177,14 @@
                     <StackPanel Grid.Column="1">
                         <Border Style="{StaticResource Panel}">
                             <StackPanel>
-                                <TextBlock Text="Drive Health" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF"/>
-                                <ListView x:Name="DriveList" Height="220" Margin="0,12,0,0" Background="#0B1220">
+                                <TextBlock Text="Drive Health" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF" />
+                                <ListView x:Name="DriveList" ItemsSource="{Binding DriveReports}" Margin="0,14,0,0" Height="260" Background="#0B1220" BorderBrush="#2F3C60">
                                     <ListView.View>
                                         <GridView>
-                                            <GridViewColumn Header="Drive" DisplayMemberBinding="{Binding Name}" Width="120"/>
-                                            <GridViewColumn Header="Used" DisplayMemberBinding="{Binding UsedPercentLabel}" Width="100"/>
-                                            <GridViewColumn Header="Free" DisplayMemberBinding="{Binding FreeSpaceLabel}" Width="150"/>
-                                            <GridViewColumn Header="Total" DisplayMemberBinding="{Binding TotalSpaceLabel}" Width="150"/>
+                                            <GridViewColumn Header="Drive" Width="120" DisplayMemberBinding="{Binding Name}" />
+                                            <GridViewColumn Header="Used" Width="120" DisplayMemberBinding="{Binding UsedPercentLabel}" />
+                                            <GridViewColumn Header="Free" Width="140" DisplayMemberBinding="{Binding FreeSpaceLabel}" />
+                                            <GridViewColumn Header="Total" Width="150" DisplayMemberBinding="{Binding TotalSpaceLabel}" />
                                         </GridView>
                                     </ListView.View>
                                 </ListView>
@@ -194,30 +193,21 @@
 
                         <Border Style="{StaticResource Panel}">
                             <StackPanel>
-                                <TextBlock Text="Top Cleanup Opportunities" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF"/>
-                                <ListView x:Name="CleanupList" Height="240" Margin="0,12,0,0" Background="#0B1220">
-                                    <ListView.View>
-                                        <GridView>
-                                            <GridViewColumn Header="File" DisplayMemberBinding="{Binding Name}" Width="360"/>
-                                            <GridViewColumn Header="Size" DisplayMemberBinding="{Binding SizeLabel}" Width="110"/>
-                                            <GridViewColumn Header="Location" DisplayMemberBinding="{Binding DirectoryName}" Width="220"/>
-                                        </GridView>
-                                    </ListView.View>
-                                </ListView>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource Panel}">
-                            <StackPanel>
-                                <TextBlock Text="Quarantine &amp; Activity Log" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF"/>
-                                <Grid Margin="0,10,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ListBox x:Name="QuarantineList" DisplayMemberPath="Name" Height="120" Background="#0B1220" BorderBrush="#2F3C60" Margin="0,0,10,0"/>
-                                    <ListBox x:Name="LogList" Height="120" Grid.Column="1" Background="#0B1220" BorderBrush="#2F3C60"/>
-                                </Grid>
+                                <TextBlock Text="Startup Applications" FontSize="18" FontWeight="SemiBold" Foreground="#CFE3FF" />
+                                <ListBox x:Name="StartupList" ItemsSource="{Binding StartupEntries}" Height="190" Margin="0,12,0,0" Background="#0B1220" BorderBrush="#2F3C60">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Name}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Source}" Foreground="#9FB7EF" Margin="12,0,0,0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
                             </StackPanel>
                         </Border>
                     </StackPanel>
