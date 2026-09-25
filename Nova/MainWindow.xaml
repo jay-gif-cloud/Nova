@@ -53,5 +53,6 @@
                 </StackPanel>
             </Grid></ScrollViewer>
         </Grid>
+        <StackPanel Visibility="Collapsed"><TextBlock x:Name="CpuValue" /><TextBlock x:Name="MemoryValue" /><TextBlock x:Name="DiskValue" /><TextBlock x:Name="NetworkValue" /></StackPanel>
     </Grid>
 </Window>
