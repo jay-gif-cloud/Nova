@@ -83,7 +83,7 @@ namespace Nova
                 {
                     LogAction("Recycle Bin emptied successfully.");
                     StatusText.Text = "Recycle Bin emptied";
-                    StatusText.Foreground = System.Windows.Media.Brushes.#FFFFFF;
+                    StatusText.Foreground = System.Windows.Media.Brushes.#Brushes.White;
                 }
                 else
                 {
