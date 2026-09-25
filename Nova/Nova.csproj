@@ -7,11 +7,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Nova</AssemblyName>
     <RootNamespace>Nova</RootNamespace>
-    
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
   </ItemGroup>
 </Project>
