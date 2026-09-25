@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -16,6 +18,7 @@ namespace Nova
         private readonly string _logPath;
         private readonly List<PerformanceCounter> _cpuCounters = new();
         private readonly List<PerformanceCounter> _networkCounters = new();
+        private bool _cleanupInProgress;
 
         public ObservableCollection<DriveReport> DriveReports { get; } = new();
         public ObservableCollection<StartupEntry> StartupEntries { get; } = new();
@@ -52,6 +55,11 @@ namespace Nova
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_cleanupInProgress)
+            {
+                return;
+            }
+
             LoadDriveReports();
             LoadLargeFiles();
             LoadStartupEntries();
@@ -60,11 +68,34 @@ namespace Nova
 
         private void CleanupTempButton_Click(object sender, RoutedEventArgs e)
         {
-            SafeCleanup("temporary files", GetTempFiles(), cleanupType: "Temporary");
+            if (_cleanupInProgress)
+            {
+                return;
+            }
+
+            Task.Run(async () =>
+            {
+                var tempFiles = GetTempFiles();
+                if (tempFiles.Count == 0)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show("No temporary files were found to clean.", "Nothing to Clean", MessageBoxButton.OK, MessageBoxImage.Information);
+                    });
+                    return;
+                }
+
+                await SafeCleanupAsync("temporary files", tempFiles, "Temporary");
+            });
         }
 
         private void CleanupRecycleButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_cleanupInProgress)
+            {
+                return;
+            }
+
             var result = MessageBox.Show(
                 "This will empty the Recycle Bin for all drives. Files can be recovered from Windows Recycle Bin only if you restore them before final deletion. Continue?",
                 "Confirm Recycle Bin Cleanup",
@@ -99,6 +130,11 @@ namespace Nova
 
         private void CleanupLargeButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_cleanupInProgress)
+            {
+                return;
+            }
+
             if (LargeFiles.Count == 0)
             {
                 MessageBox.Show("No large files were discovered yet.", "No Cleanup Items", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -109,7 +145,11 @@ namespace Nova
             var result = MessageBox.Show($"Review the following large files before removal?\n\n{summary}", "Large File Review", MessageBoxButton.YesNo, MessageBoxImage.Information);
             if (result == MessageBoxResult.Yes)
             {
-                SafeCleanup("large files", LargeFiles.Select(f => new CleanupItem(f.Path, f.Name, f.Size)).ToList(), cleanupType: "Large");
+                Task.Run(async () =>
+                {
+                    var files = LargeFiles.Select(f => new CleanupItem(f.Path, f.Name, f.Size)).ToList();
+                    await SafeCleanupAsync("large files", files, "Large");
+                });
             }
         }
 
@@ -303,56 +343,78 @@ namespace Nova
             return results.OrderByDescending(r => r.Size).Take(maxItems).ToList();
         }
 
-        private void SafeCleanup(string description, List<CleanupItem> candidates, string cleanupType)
+        private async Task SafeCleanupAsync(string description, List<CleanupItem> candidates, string cleanupType)
         {
-            if (candidates.Count == 0)
-            {
-                MessageBox.Show($"No {description} were found to clean.", "Nothing to Clean", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var totalSize = candidates.Sum(c => c.Size);
-            var summary = string.Join(Environment.NewLine, candidates.Take(5).Select(c => $"- {c.Name} ({FormatBytes(c.Size)})"));
-            var result = MessageBox.Show(
-                $"This action will move {candidates.Count} {description} to a safe quarantine folder before removal.\n\nEstimated size: {FormatBytes(totalSize)}\n\nPreview:\n{summary}\n\nContinue?",
-                $"Confirm {cleanupType} Cleanup",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result != MessageBoxResult.Yes)
+            if (_cleanupInProgress)
             {
                 return;
             }
 
-            var quarantineFolder = Path.Combine(_quarantineRoot, cleanupType + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
-            Directory.CreateDirectory(quarantineFolder);
+            _cleanupInProgress = true;
 
-            var moved = 0;
-            foreach (var item in candidates)
+            try
             {
-                try
+                if (candidates.Count == 0)
                 {
-                    var target = Path.Combine(quarantineFolder, MakeSafeFileName(item.Name + "_" + Guid.NewGuid().ToString("N")));
-                    if (File.Exists(item.Path))
+                    await Dispatcher.InvokeAsync(() =>
                     {
-                        File.Move(item.Path, target);
-                    }
-                    else if (Directory.Exists(item.Path))
-                    {
-                        Directory.Move(item.Path, target);
-                    }
-                    moved++;
+                        MessageBox.Show($"No {description} were found to clean.", "Nothing to Clean", MessageBoxButton.OK, MessageBoxImage.Information);
+                    });
+                    return;
                 }
-                catch (Exception ex)
-                {
-                    LogAction($"Failed to quarantine {item.Path}: {ex.Message}");
-                }
-            }
 
-            LogAction($"Moved {moved} {description} to quarantine folder: {quarantineFolder}.");
-            MessageBox.Show($"{moved} items were safely quarantined. You can restore them from the Nova quarantine directory if needed.", "Cleanup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-            LoadLargeFiles();
-            LoadDriveReports();
+                var totalSize = candidates.Sum(c => c.Size);
+                var summary = string.Join(Environment.NewLine, candidates.Take(5).Select(c => $"- {c.Name} ({FormatBytes(c.Size)})"));
+
+                var result = await Dispatcher.InvokeAsync(() => MessageBox.Show(
+                    $"This action will move {candidates.Count} {description} to a safe quarantine folder before removal.\n\nEstimated size: {FormatBytes(totalSize)}\n\nPreview:\n{summary}\n\nContinue?",
+                    $"Confirm {cleanupType} Cleanup",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning));
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+
+                var quarantineFolder = Path.Combine(_quarantineRoot, cleanupType + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+                Directory.CreateDirectory(quarantineFolder);
+
+                var moved = 0;
+                foreach (var item in candidates)
+                {
+                    try
+                    {
+                        var target = Path.Combine(quarantineFolder, MakeSafeFileName(item.Name + "_" + Guid.NewGuid().ToString("N")));
+                        if (File.Exists(item.Path))
+                        {
+                            File.Move(item.Path, target);
+                        }
+                        else if (Directory.Exists(item.Path))
+                        {
+                            Directory.Move(item.Path, target);
+                        }
+                        moved++;
+                    }
+                    catch (Exception ex)
+                    {
+                        LogAction($"Failed to quarantine {item.Path}: {ex.Message}");
+                    }
+                }
+
+                LogAction($"Moved {moved} {description} to quarantine folder: {quarantineFolder}.");
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"{moved} items were safely quarantined. You can restore them from the Nova quarantine directory if needed.", "Cleanup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                    LoadLargeFiles();
+                    LoadDriveReports();
+                });
+            }
+            finally
+            {
+                _cleanupInProgress = false;
+            }
         }
 
         private void LogAction(string message)
